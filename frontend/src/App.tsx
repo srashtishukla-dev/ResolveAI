@@ -413,26 +413,66 @@ function CustomerDashboard({
     category: 'GENERAL' as TicketCategory,
     priority: 'MEDIUM' as TicketPriority,
   })
+  const isMountedRef = useRef(true)
+  const ticketRequestRef = useRef(0)
 
-  const loadTickets = useCallback(async (showLoading = true) => {
-    if (showLoading) setIsLoading(true)
-    setError('')
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  const loadTickets = useCallback(async () => {
+    const requestId = ticketRequestRef.current + 1
+    ticketRequestRef.current = requestId
     try {
-      setTickets(await listTickets())
+      const loadedTickets = await listTickets()
+      if (!isMountedRef.current || requestId !== ticketRequestRef.current) return
+      setTickets(loadedTickets)
     } catch (caughtError) {
+      if (!isMountedRef.current || requestId !== ticketRequestRef.current) return
       if (caughtError instanceof ApiError && caughtError.status === 401) {
         onLogout()
         return
       }
       setError(caughtError instanceof ApiError ? caughtError.message : 'Unable to load your tickets.')
     } finally {
-      if (showLoading) setIsLoading(false)
+      if (isMountedRef.current && requestId === ticketRequestRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [onLogout])
 
   useEffect(() => {
-    void loadTickets()
-  }, [loadTickets])
+    let cancelled = false
+    const requestId = ticketRequestRef.current + 1
+    ticketRequestRef.current = requestId
+
+    listTickets()
+      .then((loadedTickets) => {
+        if (!cancelled && isMountedRef.current && requestId === ticketRequestRef.current) {
+          setTickets(loadedTickets)
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled || !isMountedRef.current || requestId !== ticketRequestRef.current) return
+        if (caughtError instanceof ApiError && caughtError.status === 401) {
+          onLogout()
+          return
+        }
+        setError(caughtError instanceof ApiError ? caughtError.message : 'Unable to load your tickets.')
+      })
+      .finally(() => {
+        if (!cancelled && isMountedRef.current && requestId === ticketRequestRef.current) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [onLogout])
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -509,7 +549,7 @@ function CustomerDashboard({
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div><h2 className="font-semibold text-slate-950">Your tickets</h2><p className="mt-1 text-xs text-slate-500">Only tickets created by your account are shown.</p></div>
-            <button className="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50" disabled={isLoading} onClick={() => void loadTickets()} type="button">Refresh</button>
+            <button className="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50" disabled={isLoading} onClick={() => { setIsLoading(true); setError(''); void loadTickets() }} type="button">Refresh</button>
           </div>
           {isLoading ? <p className="px-5 py-8 text-sm text-slate-400">Loading your tickets…</p> : tickets.length === 0 ? (
             <div className="px-5 py-10 text-center"><Icon name="ticket" size={28} /><p className="mt-3 text-sm font-medium text-slate-700">No tickets yet</p><p className="mt-1 text-sm text-slate-500">Create a ticket above when you need support.</p></div>
@@ -724,30 +764,74 @@ function TicketsPage({
   const [isLoading, setIsLoading] = useState(true)
   const [actionId, setActionId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const isMountedRef = useRef(true)
+  const ticketRequestRef = useRef(0)
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   const loadTickets = useCallback(async () => {
-    setIsLoading(true)
-    setError('')
+    const requestId = ticketRequestRef.current + 1
+    ticketRequestRef.current = requestId
     try {
-      setTickets(await listTickets({
+      const loadedTickets = await listTickets({
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
         category: categoryFilter || undefined,
-      }))
+      })
+      if (!isMountedRef.current || requestId !== ticketRequestRef.current) return
+      setTickets(loadedTickets)
     } catch (caughtError) {
+      if (!isMountedRef.current || requestId !== ticketRequestRef.current) return
       if (caughtError instanceof ApiError && caughtError.status === 401) {
         onLogout()
         return
       }
       setError(caughtError instanceof ApiError ? caughtError.message : 'Unable to load tickets.')
     } finally {
-      setIsLoading(false)
+      if (isMountedRef.current && requestId === ticketRequestRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [categoryFilter, onLogout, priorityFilter, statusFilter])
 
   useEffect(() => {
-    void loadTickets()
-  }, [loadTickets])
+    let cancelled = false
+    const requestId = ticketRequestRef.current + 1
+    ticketRequestRef.current = requestId
+
+    listTickets({
+      status: statusFilter || undefined,
+      priority: priorityFilter || undefined,
+      category: categoryFilter || undefined,
+    })
+      .then((loadedTickets) => {
+        if (!cancelled && isMountedRef.current && requestId === ticketRequestRef.current) {
+          setTickets(loadedTickets)
+        }
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled || !isMountedRef.current || requestId !== ticketRequestRef.current) return
+        if (caughtError instanceof ApiError && caughtError.status === 401) {
+          onLogout()
+          return
+        }
+        setError(caughtError instanceof ApiError ? caughtError.message : 'Unable to load tickets.')
+      })
+      .finally(() => {
+        if (!cancelled && isMountedRef.current && requestId === ticketRequestRef.current) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [categoryFilter, onLogout, priorityFilter, statusFilter])
 
   async function changeTicket(ticketId: number, payload: Parameters<typeof updateTicket>[1]) {
     setActionId(ticketId)
@@ -807,10 +891,10 @@ function TicketsPage({
           <div><p className="text-sm font-semibold text-indigo-600">Support workspace</p><h2 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">All tickets</h2><p className="mt-2 text-sm text-slate-500">Review, assign, and update customer requests.</p></div>
           {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
           <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-4">
-            <label className="text-xs font-semibold text-slate-500">Status<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => setStatusFilter(event.target.value as TicketStatus | '')} value={statusFilter}><option value="">All statuses</option>{ticketStatuses.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            <label className="text-xs font-semibold text-slate-500">Priority<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => setPriorityFilter(event.target.value as TicketPriority | '')} value={priorityFilter}><option value="">All priorities</option>{ticketPriorities.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            <label className="text-xs font-semibold text-slate-500">Category<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => setCategoryFilter(event.target.value as TicketCategory | '')} value={categoryFilter}><option value="">All categories</option>{ticketCategories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            <button className="self-end rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50" disabled={isLoading} onClick={() => void loadTickets()} type="button">Refresh tickets</button>
+            <label className="text-xs font-semibold text-slate-500">Status<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => { setIsLoading(true); setError(''); setStatusFilter(event.target.value as TicketStatus | '') }} value={statusFilter}><option value="">All statuses</option>{ticketStatuses.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            <label className="text-xs font-semibold text-slate-500">Priority<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => { setIsLoading(true); setError(''); setPriorityFilter(event.target.value as TicketPriority | '') }} value={priorityFilter}><option value="">All priorities</option>{ticketPriorities.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            <label className="text-xs font-semibold text-slate-500">Category<select className={`${selectClass} mt-1 block w-full`} onChange={(event) => { setIsLoading(true); setError(''); setCategoryFilter(event.target.value as TicketCategory | '') }} value={categoryFilter}><option value="">All categories</option>{ticketCategories.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            <button className="self-end rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50" disabled={isLoading} onClick={() => { setIsLoading(true); setError(''); void loadTickets() }} type="button">Refresh tickets</button>
           </div>
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             {isLoading ? <p className="px-5 py-10 text-sm text-slate-400">Loading tickets…</p> : tickets.length === 0 ? <p className="px-5 py-10 text-center text-sm text-slate-500">No tickets match the selected filters.</p> : (
@@ -1012,7 +1096,6 @@ function AssistantPage({
 
   useEffect(() => {
     let cancelled = false
-    setIsLoadingConversations(true)
     listConversations()
       .then((loadedConversations) => {
         if (!cancelled) {
@@ -1043,7 +1126,7 @@ function AssistantPage({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [onLogout])
 
   async function refreshConversations() {
     try {
@@ -1335,15 +1418,10 @@ function App() {
   useEffect(() => {
     if (!tokens) {
       profileRequestRef.current = null
-      setCurrentUser(null)
-      setProfileLoading(false)
-      setProfileError('')
       return
     }
 
     let cancelled = false
-    setProfileLoading(true)
-    setProfileError('')
 
     const existingRequest = profileRequestRef.current
     const profileRequest = existingRequest?.access === tokens.access
@@ -1380,13 +1458,13 @@ function App() {
     }
   }, [tokens])
 
-  function handleLogout() {
+  const handleLogout = useCallback(() => {
     clearStoredTokens()
     profileRequestRef.current = null
     setCurrentUser(null)
     setProfileError('')
     setTokens(null)
-  }
+  }, [])
 
   function handleLogin(nextTokens: TokenSet) {
     setCurrentUser(null)
