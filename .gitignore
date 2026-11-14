@@ -1,0 +1,47 @@
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+*.sqlite3
+*.log
+staticfiles/
+media/
+ml_models/
+
+# Node.js
+node_modules/
+dist/
+build/
+
+# Docker local database
+docker/postgres/data/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+backend/upload-error.txt
+backend/day6_review.txt
+backend/security_review.txt
+
