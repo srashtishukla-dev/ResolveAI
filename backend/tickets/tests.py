@@ -1,3 +1,4 @@
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -68,6 +69,26 @@ class TicketAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['id'], self.ticket.pk)
+
+    def test_ticket_listing_supports_custom_page_size(self):
+        self.authenticate(self.user)
+
+        for index in range(11):
+            Ticket.objects.create(
+                title=f'Ticket {index}',
+                description='Pagination test',
+                created_by=self.user,
+            )
+
+        response = self.client.get(
+            self.list_url,
+            {'page_size': 2},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 12)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertIsNotNone(response.data['next'])
 
     def test_staff_listing_contains_all_tickets(self):
         self.authenticate(self.staff)
