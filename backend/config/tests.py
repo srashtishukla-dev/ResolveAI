@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.conf import settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -8,6 +9,10 @@ from rest_framework.test import APIClient
 class HealthCheckTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+
+    def test_django_email_settings_use_standard_configuration(self):
+        self.assertTrue(settings.EMAIL_BACKEND)
+        self.assertEqual(settings.EMAIL_PORT, 587)
 
     def test_health_check_returns_healthy_status(self):
         response = self.client.get('/api/health/')
