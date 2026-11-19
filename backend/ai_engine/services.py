@@ -60,6 +60,11 @@ def load_classifier():
 def classify_ticket(title, description):
     classifier = load_classifier()
     text = f'{title.strip()}. {description.strip()}'
-    prediction = classifier.predict([text])[0]
-    confidence = float(classifier.predict_proba([text]).max())
+
+    probabilities = classifier.predict_proba([text])[0]
+    predicted_index = probabilities.argmax()
+
+    prediction = classifier.classes_[predicted_index]
+    confidence = float(probabilities[predicted_index])
+
     return prediction, max(0.0, min(1.0, confidence))
