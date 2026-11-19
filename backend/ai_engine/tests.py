@@ -1,4 +1,5 @@
 from pathlib import Path
+from ai_engine.models import Conversation
 from tempfile import TemporaryDirectory
 
 from django.contrib.auth import get_user_model
@@ -129,3 +130,111 @@ class ClassifierEvaluationTests(APITestCase):
             'GENERAL',
         })
         self.assertEqual(len(metrics['confusion_matrix']), 4)
+
+class ConversationSecurityTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='staff-security',
+            password='test-password',
+            is_staff=True,
+        )
+        self.other_staff = User.objects.create_user(
+            username='other-staff-security',
+            password='test-password',
+            is_staff=True,
+        )
+        self.customer = User.objects.create_user(
+            username='customer-security',
+            password='test-password',
+        )
+
+        self.conversation = Conversation.objects.create(
+            user=self.staff,
+            title='Staff conversation',
+        )
+        self.other_conversation = Conversation.objects.create(
+            user=self.other_staff,
+            title='Other staff conversation',
+        )
+
+    def test_customer_cannot_list_conversations(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.get(reverse('conversation-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_customer_cannot_create_conversation(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            reverse('conversation-list'),
+            {'title': 'Unauthorized conversation'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_customer_cannot_access_conversation_detail(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.get(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_customer_cannot_delete_conversation(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.delete(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(
+            Conversation.objects.filter(pk=self.conversation.pk).exists()
+        )
+
+    def test_staff_can_only_list_own_conversations(self):
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.get(reverse('conversation-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = [item['id'] for item in response.data]
+        self.assertIn(self.conversation.id, returned_ids)
+        self.assertNotIn(self.other_conversation.id, returned_ids)
+
+    def test_staff_cannot_view_another_staff_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.get(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.other_conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_staff_cannot_delete_another_staff_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.delete(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.other_conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(
+            Conversation.objects.filter(pk=self.other_conversation.pk).exists()
+        )
