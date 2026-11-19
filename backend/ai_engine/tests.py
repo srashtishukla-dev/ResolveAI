@@ -445,5 +445,27 @@ class ClassifierTrainingCacheTests(APITestCase):
             train_classifier('temporary_classifier.joblib')
 
         mock_dump.assert_called_once()
-        mock_clear.assert_called_once()         
+        mock_clear.assert_called_once() 
+class ClassifierTrainingTests(APITestCase):
+    def test_training_creates_model_file(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from ai_engine.services import train_classifier
+
+        with TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / 'classifier.joblib'
+
+            with patch(
+                'ai_engine.services.build_training_pipeline'
+            ) as mock_build, patch(
+                'ai_engine.services.joblib.dump'
+            ) as mock_dump:
+                mock_build.return_value = object()
+
+                result = train_classifier(output_path)
+
+            self.assertEqual(result, output_path)
+            self.assertTrue(output_path.parent.exists())
+            mock_dump.assert_called_once()        
                    
