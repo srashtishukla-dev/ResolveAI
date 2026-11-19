@@ -374,3 +374,22 @@ class TicketAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 0)
         self.assertEqual(response.data['results'], [])
+    def test_ticket_pagination_returns_correct_second_page(self):
+        self.authenticate(self.user)
+
+        for index in range(12):
+            Ticket.objects.create(
+                title=f'Page ticket {index}',
+                description='Pagination navigation test',
+                created_by=self.user,
+            )
+
+        response = self.client.get(
+            self.list_url,
+            {'page': 2, 'page_size': 5},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 13)
+        self.assertEqual(len(response.data['results']), 5)
+        self.assertIsNotNone(response.data['previous'])
