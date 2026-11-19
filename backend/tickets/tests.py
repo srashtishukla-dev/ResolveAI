@@ -267,3 +267,19 @@ class TicketAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('assigned_to', response.data)
+    def test_new_ticket_uses_default_field_values(self):
+        self.authenticate(self.user)
+
+        response = self.client.post(
+            self.list_url,
+            {
+                'title': 'Default values test',
+                'description': 'Checking ticket defaults',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['status'], Ticket.Status.OPEN)
+        self.assertEqual(response.data['priority'], Ticket.Priority.MEDIUM)
+        self.assertEqual(response.data['category'], Ticket.Category.GENERAL)
