@@ -393,3 +393,23 @@ class ClassifierPredictionTests(APITestCase):
             result = classify_ticket('Payment issue', 'Payment failed')
 
         self.assertEqual(result, ('BILLING', 0.5))      
+class ClassifierLoadingTests(APITestCase):
+    def test_missing_model_raises_clear_error(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from ai_engine.services import load_classifier, ModelNotTrainedError
+
+        with TemporaryDirectory() as temp_dir:
+            missing_model = Path(temp_dir) / 'missing_model.joblib'
+
+            load_classifier.cache_clear()
+
+            with patch('ai_engine.services.MODEL_PATH', missing_model):
+                with self.assertRaisesRegex(
+                    ModelNotTrainedError,
+                    'model has not been trained'
+                ):
+                    load_classifier()
+
+            load_classifier.cache_clear()        
