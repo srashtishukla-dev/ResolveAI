@@ -339,3 +339,23 @@ class ClassifierInputValidationTests(APITestCase):
 
         with self.assertRaises(ValueError):
             classify_ticket('Login issue', '   ')        
+class ClassifierPredictionTests(APITestCase):
+    def test_returns_category_with_highest_confidence(self):
+        from unittest.mock import Mock, patch
+        import numpy as np
+        from ai_engine.services import classify_ticket
+
+        classifier = Mock()
+        classifier.classes_ = ['BILLING', 'TECHNICAL', 'GENERAL']
+        classifier.predict_proba.return_value = np.array(
+            [[0.2, 0.7, 0.1]]
+        )
+
+        with patch(
+            'ai_engine.services.load_classifier',
+            return_value=classifier
+        ):
+            result = classify_ticket('Login issue', 'Unable to log in')
+
+        self.assertEqual(result, ('TECHNICAL', 0.7))
+        classifier.predict_proba.assert_called_once()
