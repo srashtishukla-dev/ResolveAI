@@ -413,3 +413,21 @@ class ClassifierLoadingTests(APITestCase):
                     load_classifier()
 
             load_classifier.cache_clear()        
+class ClassifierCacheTests(APITestCase):
+    def test_load_classifier_returns_cached_instance(self):
+        from unittest.mock import patch
+        from ai_engine.services import load_classifier
+
+        load_classifier.cache_clear()
+
+        with patch(
+            'ai_engine.services.joblib.load',
+            return_value=object()
+        ) as mock_load:
+            first = load_classifier()
+            second = load_classifier()
+
+        self.assertIs(first, second)
+        mock_load.assert_called_once()
+
+        load_classifier.cache_clear()            
