@@ -29,3 +29,15 @@ class TicketSerializer(serializers.ModelSerializer):
                 'You can only assign a ticket to yourself.'
             )
         return assigned_to
+
+    def validate_title(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Title cannot be blank.')
+        return value
+
+    def validate_description(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Description cannot be blank.')
+        return value

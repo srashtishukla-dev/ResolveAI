@@ -144,6 +144,31 @@ class TicketAPITests(APITestCase):
         self.assertIn('title', response.data)
         self.assertIn('category', response.data)
 
+    def test_whitespace_only_ticket_content_is_rejected(self):
+        self.authenticate(self.user)
+
+        response = self.client.post(self.list_url, {
+            'title': '   ',
+            'description': '\n\t',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('title', response.data)
+        self.assertIn('description', response.data)
+
+    def test_ticket_content_is_trimmed_before_persistence(self):
+        self.authenticate(self.user)
+
+        response = self.client.post(self.list_url, {
+            'title': '  Login issue  ',
+            'description': '  Cannot sign in.  ',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        ticket = Ticket.objects.get(pk=response.data['id'])
+        self.assertEqual(ticket.title, 'Login issue')
+        self.assertEqual(ticket.description, 'Cannot sign in.')
+
     def test_filtering_by_status_priority_and_category(self):
         self.authenticate(self.staff)
 
