@@ -327,3 +327,15 @@ class QuestionAnswerAccessTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+class ClassifierInputValidationTests(APITestCase):
+    def test_empty_title_is_rejected(self):
+        from ai_engine.services import classify_ticket
+
+        with self.assertRaises(ValueError):
+            classify_ticket('   ', 'Cannot log in')
+
+    def test_empty_description_is_rejected(self):
+        from ai_engine.services import classify_ticket
+
+        with self.assertRaises(ValueError):
+            classify_ticket('Login issue', '   ')        
