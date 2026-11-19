@@ -280,3 +280,50 @@ class QuestionAnswerSerializerTests(APITestCase):
         })
 
         self.assertTrue(serializer.is_valid())
+
+class QuestionAnswerAccessTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='answer-staff',
+            password='test-password',
+            is_staff=True,
+        )
+        self.other_staff = User.objects.create_user(
+            username='answer-other-staff',
+            password='test-password',
+            is_staff=True,
+        )
+        self.customer = User.objects.create_user(
+            username='answer-customer',
+            password='test-password',
+        )
+        self.other_conversation = Conversation.objects.create(
+            user=self.other_staff,
+            title='Private conversation',
+        )
+        self.url = reverse('ai-answer')
+
+    def test_customer_cannot_submit_ai_question(self):
+        self.client.force_authenticate(user=self.customer)
+
+        response = self.client.post(
+            self.url,
+            {'question': 'How do I reset my password?'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_cannot_use_another_staff_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.post(
+            self.url,
+            {
+                'question': 'How do I reset my password?',
+                'conversation_id': self.other_conversation.id,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
