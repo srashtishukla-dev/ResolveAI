@@ -359,3 +359,21 @@ class ClassifierPredictionTests(APITestCase):
 
         self.assertEqual(result, ('TECHNICAL', 0.7))
         classifier.predict_proba.assert_called_once()
+    def test_strips_title_and_description_before_prediction(self):
+        from unittest.mock import Mock, patch
+        import numpy as np
+        from ai_engine.services import classify_ticket
+
+        classifier = Mock()
+        classifier.classes_ = ['TECHNICAL']
+        classifier.predict_proba.return_value = np.array([[1.0]])
+
+        with patch(
+            'ai_engine.services.load_classifier',
+            return_value=classifier
+        ):
+            classify_ticket('  Login issue  ', '  Unable to log in  ')
+
+        classifier.predict_proba.assert_called_once_with(
+            ['Login issue. Unable to log in']
+        )    
