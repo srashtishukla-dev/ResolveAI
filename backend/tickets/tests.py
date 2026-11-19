@@ -297,3 +297,14 @@ class TicketAPITests(APITestCase):
 
         self.ticket.refresh_from_db()
         self.assertGreater(self.ticket.updated_at, original_updated_at)
+    def test_user_cannot_delete_another_users_ticket(self):
+        self.authenticate(self.user)
+
+        response = self.client.delete(
+            reverse('ticket-detail', args=[self.other_ticket.pk])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(
+            Ticket.objects.filter(pk=self.other_ticket.pk).exists()
+        )
