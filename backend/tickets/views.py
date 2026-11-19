@@ -1,4 +1,5 @@
 from rest_framework import permissions, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 
 from tickets.models import Ticket
@@ -24,6 +25,14 @@ class TicketViewSet(viewsets.ModelViewSet):
         for field in ('status', 'priority', 'category'):
             value = self.request.query_params.get(field)
             if value:
+                valid_values = {
+                    choice_value
+                    for choice_value, _ in Ticket._meta.get_field(field).choices
+                }
+                if value not in valid_values:
+                    raise ValidationError({
+                        field: f'Unsupported {field} filter.',
+                    })
                 queryset = queryset.filter(**{field: value})
         return queryset
 

@@ -181,3 +181,11 @@ class TicketAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['id'], self.ticket.pk)
+
+    def test_invalid_filter_is_rejected(self):
+        self.authenticate(self.staff)
+
+        response = self.client.get(self.list_url, {'status': 'UNKNOWN'})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('status', response.data)
