@@ -362,3 +362,15 @@ class TicketAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 2)
+    def test_customer_with_no_tickets_gets_empty_list(self):
+        new_customer = User.objects.create_user(
+            username='empty-customer',
+            password='test-password',
+        )
+        self.authenticate(new_customer)
+
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(response.data['results'], [])
