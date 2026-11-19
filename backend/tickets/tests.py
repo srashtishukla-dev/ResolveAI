@@ -352,3 +352,13 @@ class TicketAPITests(APITestCase):
             response.data['results'][0]['id'],
             self.ticket.pk,
         )  
+    def test_ticket_filtering_by_status(self):
+        self.authenticate(self.staff)
+
+        response = self.client.get(
+            self.list_url,
+            {'status': Ticket.Status.OPEN},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 2)
