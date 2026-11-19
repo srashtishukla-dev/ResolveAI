@@ -337,4 +337,18 @@ class TicketAPITests(APITestCase):
         self.assertEqual(
             response.data['results'][0]['id'],
             self.ticket.pk,
-        )    
+        )  
+    def test_ticket_filtering_by_category(self):
+        self.authenticate(self.staff)
+
+        response = self.client.get(
+            self.list_url,
+            {'category': Ticket.Category.TECHNICAL},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(
+            response.data['results'][0]['id'],
+            self.ticket.pk,
+        )  
