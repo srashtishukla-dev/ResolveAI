@@ -17,6 +17,7 @@ class QuestionAnswerSerializer(serializers.Serializer):
     conversation_id = serializers.IntegerField(
         required=False,
         allow_null=True,
+        min_value=1,
     )
 
 

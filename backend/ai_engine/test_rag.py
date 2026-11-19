@@ -241,6 +241,21 @@ class QuestionAnswerAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('question', response.data)
 
+    def test_invalid_conversation_id_is_rejected(self):
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.post(
+            self.url,
+            {
+                'question': 'How do I reset my password?',
+                'conversation_id': 0,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('conversation_id', response.data)
+
     @patch('ai_engine.views.answer_question')
     def test_response_contains_answer_sources_and_context_flag(self, answer_mock):
         answer_mock.return_value = type(
