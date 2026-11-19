@@ -430,4 +430,20 @@ class ClassifierCacheTests(APITestCase):
         self.assertIs(first, second)
         mock_load.assert_called_once()
 
-        load_classifier.cache_clear()            
+        load_classifier.cache_clear()
+class ClassifierTrainingCacheTests(APITestCase):
+    def test_training_clears_classifier_cache(self):
+        from unittest.mock import patch
+        from ai_engine.services import train_classifier, load_classifier
+
+        with patch('ai_engine.services.build_training_pipeline') as mock_build, \
+             patch('ai_engine.services.joblib.dump') as mock_dump, \
+             patch('ai_engine.services.load_classifier.cache_clear') as mock_clear:
+
+            mock_build.return_value = object()
+
+            train_classifier('temporary_classifier.joblib')
+
+        mock_dump.assert_called_once()
+        mock_clear.assert_called_once()         
+                   
