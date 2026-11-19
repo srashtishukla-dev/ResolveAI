@@ -376,4 +376,20 @@ class ClassifierPredictionTests(APITestCase):
 
         classifier.predict_proba.assert_called_once_with(
             ['Login issue. Unable to log in']
-        )    
+        )  
+    def test_equal_probabilities_select_first_category(self):
+        from unittest.mock import Mock, patch
+        import numpy as np
+        from ai_engine.services import classify_ticket
+
+        classifier = Mock()
+        classifier.classes_ = ['BILLING', 'TECHNICAL']
+        classifier.predict_proba.return_value = np.array([[0.5, 0.5]])
+
+        with patch(
+            'ai_engine.services.load_classifier',
+            return_value=classifier
+        ):
+            result = classify_ticket('Payment issue', 'Payment failed')
+
+        self.assertEqual(result, ('BILLING', 0.5))      
