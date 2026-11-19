@@ -88,8 +88,7 @@ export type TicketListResponse = {
 
 type ApiErrorPayload = {
   detail?: string
-  question?: string | string[]
-  [key: string]: string | string[] | undefined
+  [key: string]: unknown
 }
 
 export class ApiError extends Error {
@@ -142,13 +141,24 @@ async function readErrorMessage(response: Response): Promise<{ message: string; 
       if (field === 'detail' || value === undefined) {
         continue
       }
-      details[field] = Array.isArray(value)
-        ? value.filter((item): item is string => typeof item === 'string')
-        : [value]
+      const messages = Array.isArray(value) ? value : [value]
+      details[field] = messages.flatMap((item) => (
+        typeof item === 'string'
+          ? [item]
+          : item && typeof item === 'object'
+            ? Object.values(item).flatMap((nested) => (
+              Array.isArray(nested)
+                ? nested.filter((message): message is string => typeof message === 'string')
+                : typeof nested === 'string' ? [nested] : []
+            ))
+            : []
+      ))
     }
     const firstFieldError = Object.values(details)[0]?.[0]
     return {
-      message: payload.detail ?? firstFieldError ?? 'The request could not be completed.',
+      message: typeof payload.detail === 'string'
+        ? payload.detail
+        : firstFieldError ?? 'The request could not be completed.',
       details,
     }
   } catch {

@@ -138,6 +138,27 @@ describe('API client', () => {
     await expect(getCurrentUser()).rejects.toBeInstanceOf(ApiError)
   })
 
+  it('flattens nested validation errors into field details', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        mockResponse({
+          file: ['The file is invalid.'],
+          metadata: { title: ['A title is required.'] },
+        }, 400),
+      ),
+    )
+
+    await expect(getCurrentUser()).rejects.toMatchObject({
+      status: 400,
+      message: 'The file is invalid.',
+      details: {
+        file: ['The file is invalid.'],
+        metadata: ['A title is required.'],
+      },
+    })
+  })
+
   it('removes malformed tokens from local storage', () => {
     localStorage.setItem('resolveai_tokens', '{invalid-json')
 
