@@ -283,3 +283,17 @@ class TicketAPITests(APITestCase):
         self.assertEqual(response.data['status'], Ticket.Status.OPEN)
         self.assertEqual(response.data['priority'], Ticket.Priority.MEDIUM)
         self.assertEqual(response.data['category'], Ticket.Category.GENERAL)
+    def test_ticket_updated_at_changes_after_update(self):
+        self.authenticate(self.user)
+        original_updated_at = self.ticket.updated_at
+
+        response = self.client.patch(
+            reverse('ticket-detail', args=[self.ticket.pk]),
+            {'title': 'Updated ticket title'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.ticket.refresh_from_db()
+        self.assertGreater(self.ticket.updated_at, original_updated_at)
