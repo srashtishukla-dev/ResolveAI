@@ -52,16 +52,19 @@ class KnowledgeDocumentSerializer(serializers.ModelSerializer):
         )
         try:
             file_type = validate_upload(uploaded_file, max_size)
-            extract_document_text(uploaded_file, file_type)
+            extracted_text = extract_document_text(uploaded_file, file_type)
         except DocumentExtractionError as exc:
             raise serializers.ValidationError(exc.message) from exc
         uploaded_file.file_type = file_type
+        uploaded_file.extracted_text = extracted_text
         return uploaded_file
 
     def create(self, validated_data):
         uploaded_file = validated_data.pop('file')
         file_type = uploaded_file.file_type
-        extracted_text = extract_document_text(uploaded_file, file_type)
+        extracted_text = getattr(uploaded_file, 'extracted_text', None)
+        if extracted_text is None:
+            extracted_text = extract_document_text(uploaded_file, file_type)
         stored_name = f'knowledge_base/{uuid.uuid4().hex}.{file_type.lower()}'
         uploaded_file.seek(0)
         stored_name = default_storage.save(stored_name, uploaded_file)

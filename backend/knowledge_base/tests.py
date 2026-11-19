@@ -127,6 +127,17 @@ class KnowledgeDocumentAPITests(APITestCase):
         self.assertEqual(document.extracted_text, 'Billing details')
         self.assertIsNone(document.chunks.get().page_number)
 
+    @patch('knowledge_base.serializers.extract_document_text', return_value='Cached text')
+    def test_upload_extraction_is_reused_during_creation(self, extract_mock):
+        response = self.upload(self.staff)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(extract_mock.call_count, 1)
+        self.assertEqual(
+            KnowledgeDocument.objects.get().extracted_text,
+            'Cached text',
+        )
+
     def test_invalid_extension_is_rejected(self):
         response = self.upload(self.staff, 'guide.docx', b'text')
 
