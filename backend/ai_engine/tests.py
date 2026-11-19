@@ -1,4 +1,5 @@
 from pathlib import Path
+from ai_engine.serializers import QuestionAnswerSerializer
 from ai_engine.models import Conversation
 from tempfile import TemporaryDirectory
 
@@ -238,3 +239,44 @@ class ConversationSecurityTests(APITestCase):
         self.assertTrue(
             Conversation.objects.filter(pk=self.other_conversation.pk).exists()
         )
+
+class QuestionAnswerSerializerTests(APITestCase):
+    def test_valid_question_is_accepted(self):
+        serializer = QuestionAnswerSerializer(data={
+            'question': 'How do I reset my password?',
+        })
+
+        self.assertTrue(serializer.is_valid())
+
+    def test_whitespace_only_question_is_rejected(self):
+        serializer = QuestionAnswerSerializer(data={
+            'question': '     ',
+        })
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('question', serializer.errors)
+
+    def test_question_over_2000_characters_is_rejected(self):
+        serializer = QuestionAnswerSerializer(data={
+            'question': 'a' * 2001,
+        })
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('question', serializer.errors)
+
+    def test_zero_conversation_id_is_rejected(self):
+        serializer = QuestionAnswerSerializer(data={
+            'question': 'How do I reset my password?',
+            'conversation_id': 0,
+        })
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('conversation_id', serializer.errors)
+
+    def test_null_conversation_id_is_accepted(self):
+        serializer = QuestionAnswerSerializer(data={
+            'question': 'How do I reset my password?',
+            'conversation_id': None,
+        })
+
+        self.assertTrue(serializer.is_valid())
