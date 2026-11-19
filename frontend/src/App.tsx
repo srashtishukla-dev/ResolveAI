@@ -342,7 +342,7 @@ function RegistrationScreen({ onBackToLogin }: { onBackToLogin: (registrationCom
               Password
               <div className="relative">
                 <input autoComplete="new-password" className={`${inputClass('password')} pr-16`} onChange={(event) => updateField('password', event.target.value)} type={showPassword ? 'text' : 'password'} value={form.password} />
-                <button aria-pressed={showPassword} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-indigo-600" onClick={() => setShowPassword((current) => !current)} type="button">
+                <button aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-indigo-600" onClick={() => setShowPassword((current) => !current)} type="button">
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
@@ -352,7 +352,7 @@ function RegistrationScreen({ onBackToLogin }: { onBackToLogin: (registrationCom
               Confirm password
               <div className="relative">
                 <input autoComplete="new-password" className={`${inputClass('password_confirmation')} pr-16`} onChange={(event) => updateField('password_confirmation', event.target.value)} type={showConfirmation ? 'text' : 'password'} value={form.password_confirmation} />
-                <button aria-pressed={showConfirmation} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-indigo-600" onClick={() => setShowConfirmation((current) => !current)} type="button">
+                <button aria-label={showConfirmation ? 'Hide password confirmation' : 'Show password confirmation'} aria-pressed={showConfirmation} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 hover:text-indigo-600" onClick={() => setShowConfirmation((current) => !current)} type="button">
                   {showConfirmation ? 'Hide' : 'Show'}
                 </button>
               </div>

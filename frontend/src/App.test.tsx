@@ -145,6 +145,15 @@ describe('App authentication and customer dashboard', () => {
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
   })
 
+  it('labels password visibility controls for assistive technology', async () => {
+    window.history.replaceState({}, '', '/#register')
+
+    render(<App />)
+
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show password confirmation' })).toBeInTheDocument()
+  })
+
   it('validates empty registration fields', async () => {
     const user = userEvent.setup()
 
