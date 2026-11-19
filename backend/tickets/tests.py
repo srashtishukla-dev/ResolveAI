@@ -324,3 +324,17 @@ class TicketAPITests(APITestCase):
             self.other_ticket.status,
             Ticket.Status.IN_PROGRESS,
         )
+    def test_ticket_filtering_by_priority(self):
+        self.authenticate(self.staff)
+
+        response = self.client.get(
+            self.list_url,
+            {'priority': Ticket.Priority.HIGH},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(
+            response.data['results'][0]['id'],
+            self.ticket.pk,
+        )    
