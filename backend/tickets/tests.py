@@ -255,3 +255,15 @@ class TicketAPITests(APITestCase):
 
         ticket_ids = [item['id'] for item in response.data['results']]
         self.assertEqual(ticket_ids, sorted(ticket_ids, reverse=True))
+        
+    def test_customer_cannot_assign_ticket_to_themselves(self):
+        self.authenticate(self.user)
+
+        response = self.client.patch(
+            reverse('ticket-detail', args=[self.ticket.pk]),
+            {'assigned_to': self.user.pk},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('assigned_to', response.data)
