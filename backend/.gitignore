@@ -1,18 +1,37 @@
+# Environment secrets
 .env
+.env.*
+
+# Python virtual environments
 .venv/
 venv/
 env/
+
+# Python cache and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Database and logs
 *.sqlite3
 *.log
+
+# Testing and coverage
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Django generated files
 staticfiles/
 media/
+
+# AI/ML model files
+ml_models/
+
+# Build and distribution files
 dist/
 build/
 *.egg-info/
-ml_models/*.joblib
+
+# Previous virtual environment backup
+venv_old/
