@@ -90,6 +90,26 @@ class TicketAPITests(APITestCase):
         self.assertEqual(len(response.data['results']), 2)
         self.assertIsNotNone(response.data['next'])
 
+    def test_ticket_listing_enforces_maximum_page_size(self):
+        self.authenticate(self.user)
+
+        for index in range(101):
+            Ticket.objects.create(
+                title=f'Pagination ticket {index}',
+                description='Maximum page size test',
+                created_by=self.user,
+            )
+
+        response = self.client.get(
+            self.list_url,
+            {'page_size': 150},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 102)
+        self.assertEqual(len(response.data['results']), 100)
+        self.assertIsNotNone(response.data['next'])
+
     def test_staff_listing_contains_all_tickets(self):
         self.authenticate(self.staff)
 
