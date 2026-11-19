@@ -1,3 +1,4 @@
+
 from django.conf import settings
 from django.db import models
 
@@ -37,10 +38,16 @@ class ChatMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ('created_at',)
+        ordering = ('created_at', 'id')
         indexes = [
-            models.Index(fields=('conversation', 'created_at')),
+            models.Index(
+                fields=('conversation', 'created_at', 'id'),
+                name='chat_msg_conv_time_id_idx',
+            ),
         ]
 
     def __str__(self):
-        return f'{self.get_role_display()} message in conversation {self.conversation_id}'
+        return (
+            f'{self.get_role_display()} message '
+            f'in conversation {self.conversation_id}'
+        )
