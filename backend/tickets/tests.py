@@ -308,3 +308,19 @@ class TicketAPITests(APITestCase):
         self.assertTrue(
             Ticket.objects.filter(pk=self.other_ticket.pk).exists()
         )
+    def test_staff_can_update_another_users_ticket(self):
+        self.authenticate(self.staff)
+
+        response = self.client.patch(
+            reverse('ticket-detail', args=[self.other_ticket.pk]),
+            {'status': Ticket.Status.IN_PROGRESS},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.other_ticket.refresh_from_db()
+        self.assertEqual(
+            self.other_ticket.status,
+            Ticket.Status.IN_PROGRESS,
+        )
