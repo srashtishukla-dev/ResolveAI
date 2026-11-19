@@ -58,8 +58,14 @@ def load_classifier():
 
 
 def classify_ticket(title, description):
+    title = title.strip()
+    description = description.strip()
+
+    if not title or not description:
+        raise ValueError('Title and description cannot be empty.')
+
     classifier = load_classifier()
-    text = f'{title.strip()}. {description.strip()}'
+    text = f'{title}. {description}'
 
     probabilities = classifier.predict_proba([text])[0]
     predicted_index = probabilities.argmax()
