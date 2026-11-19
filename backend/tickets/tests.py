@@ -242,3 +242,16 @@ class TicketAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.assigned_to, self.other_user)
+    def test_ticket_listing_uses_id_to_break_creation_timestamp_ties(self):
+        self.authenticate(self.staff)
+
+        Ticket.objects.filter(
+            pk__in=[self.ticket.pk, self.other_ticket.pk]
+        ).update(created_at=self.ticket.created_at)
+
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        ticket_ids = [item['id'] for item in response.data['results']]
+        self.assertEqual(ticket_ids, sorted(ticket_ids, reverse=True))
