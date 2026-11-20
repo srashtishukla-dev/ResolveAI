@@ -606,6 +606,22 @@ class QuestionAnswerAccessTests(APITestCase):
         )        
 
 class ClassifierInputValidationTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='history-staff',
+            password='test-password',
+            is_staff=True,
+        )
+        self.other_staff = User.objects.create_user(
+            username='history-other-staff',
+            password='test-password',
+            is_staff=True,
+        )
+        self.other_conversation = Conversation.objects.create(
+            user=self.other_staff,
+            title='Other private conversation',
+        )
+        self.url = reverse('ai-answer')
     def test_empty_title_is_rejected(self):
         from ai_engine.services import classify_ticket
 
