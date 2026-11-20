@@ -927,6 +927,7 @@ function Sidebar({
   conversationError,
   isLoadingConversations,
   isDeletingConversationId,
+  isRenamingConversationId,
   onDeleteConversation,
   onRenameConversation,
   onNewChat,
@@ -939,6 +940,7 @@ function Sidebar({
   conversationError: string
   isLoadingConversations: boolean
   isDeletingConversationId: number | null
+  isRenamingConversationId: number | null
   onDeleteConversation: (conversationId: number) => void
   onRenameConversation: (conversationId: number) => void
   onNewChat: () => void
@@ -1017,7 +1019,8 @@ function Sidebar({
               <button
                 aria-label={`Rename ${conversation.title}`}
                 className="rounded-lg px-2 py-1 text-slate-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 group-hover:opacity-100 focus:opacity-100"
-                onClick={() => onRenameConversation(conversation.id)}
+                disabled={isRenamingConversationId === conversation.id}
+      onClick={() => onRenameConversation(conversation.id)}
                 type="button"
               >
                 ?
@@ -1098,6 +1101,7 @@ function AssistantPage({
   const [isLoadingConversation, setIsLoadingConversation] = useState(false)
   const [conversationError, setConversationError] = useState('')
   const [isDeletingConversationId, setIsDeletingConversationId] = useState<number | null>(null)
+  const [isRenamingConversationId, setIsRenamingConversationId] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const conversationRequestRef = useRef(0)
 
@@ -1207,7 +1211,7 @@ function AssistantPage({
 
   async function renameSavedConversation(conversationId: number) {
     const conversation = conversations.find((item) => item.id === conversationId)
-    if (!conversation) return
+    if (!conversation || isRenamingConversationId !== null) return
 
     const title = window.prompt('Enter a new conversation title:', conversation.title)
     if (title === null) return
@@ -1223,6 +1227,7 @@ function AssistantPage({
       return
     }
 
+    setIsRenamingConversationId(conversationId)
     try {
       const updated = await renameConversation(conversationId, trimmedTitle)
       setConversations((current) =>
@@ -1231,12 +1236,14 @@ function AssistantPage({
         )
       )
       setConversationError('')
+      setIsRenamingConversationId(null)
     } catch (caughtError) {
       setConversationError(
         caughtError instanceof ApiError
           ? caughtError.message
           : 'Unable to rename this conversation.'
       )
+      setIsRenamingConversationId(null)
     }
   }
 
@@ -1339,6 +1346,7 @@ function AssistantPage({
         conversations={conversations}
         conversationError={conversationError}
         isDeletingConversationId={isDeletingConversationId}
+        isRenamingConversationId={isRenamingConversationId}
         isLoadingConversations={isLoadingConversations}
         onDeleteConversation={(conversationId) => void removeConversation(conversationId)}
         onRenameConversation={(conversationId) => void renameSavedConversation(conversationId)}
