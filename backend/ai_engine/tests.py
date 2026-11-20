@@ -334,6 +334,34 @@ class ConversationSecurityTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_deleting_conversation_does_not_affect_other_conversations(self):
+        from ai_engine.models import ChatMessage
+
+        other_message = ChatMessage.objects.create(
+            conversation=self.other_conversation,
+            role=ChatMessage.Role.USER,
+            content='Other staff private message',
+        )
+
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.delete(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertTrue(
+            Conversation.objects.filter(
+                pk=self.other_conversation.pk
+            ).exists()
+        )
+        self.assertTrue(
+            ChatMessage.objects.filter(pk=other_message.pk).exists()
+        )    
         
 
 class QuestionAnswerSerializerTests(APITestCase):
