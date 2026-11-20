@@ -106,7 +106,6 @@ class ConversationDetailView(APIView):
         conversation.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class QuestionAnswerView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -116,21 +115,21 @@ class QuestionAnswerView(APIView):
                 {'detail': 'Only staff users can query knowledge-base content.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
         serializer = QuestionAnswerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         conversation = None
         conversation_history = ()
         conversation_id = serializer.validated_data.get('conversation_id')
+
         if conversation_id is not None:
             conversation = get_object_or_404(
                 Conversation.objects.filter(user=request.user),
                 pk=conversation_id,
             )
             conversation_history = tuple(
-                (
-                    message.role,
-                    message.content,
-                )
+                (message.role, message.content)
                 for message in list(
                     conversation.messages.order_by(
                         '-created_at',
@@ -138,15 +137,20 @@ class QuestionAnswerView(APIView):
                     )[:10]
                 )[::-1]
             )
+
         try:
             result = answer_question(
-            serializer.validated_data['question'],
-            uploaded_by=request.user,
-            conversation_history=conversation_history,
-         )
+                serializer.validated_data['question'],
+                uploaded_by=request.user,
+                conversation_history=conversation_history,
+            )
         except QuestionValidationError as exc:
             raise ValidationError({'question': str(exc)}) from exc
-        except (EmbeddingServiceError, SimilaritySearchError, LLMProviderError):
+        except (
+            EmbeddingServiceError,
+            SimilaritySearchError,
+            LLMProviderError,
+        ):
             return Response(
                 {'detail': 'The knowledge-base answer service is unavailable.'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -157,25 +161,29 @@ class QuestionAnswerView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        if conversation is None:
-            conversation = Conversation.objects.create(
-                user=request.user,
-                title=result.question[:150],
-            )
-        elif not conversation.messages.exists():
-            conversation.title = result.question[:150]
+        with transaction.atomic():
+            if conversation is None:
+                conversation = Conversation.objects.create(
+                    user=request.user,
+                    title=result.question[:150],
+                )
+            elif not conversation.messages.exists():
+                conversation.title = result.question[:150]
+                conversation.save(update_fields=('title', 'updated_at'))
 
-        ChatMessage.objects.create(
-            conversation=conversation,
-            role=ChatMessage.Role.USER,
-            content=result.question,
-        )
-        ChatMessage.objects.create(
-            conversation=conversation,
-            role=ChatMessage.Role.ASSISTANT,
-            content=result.answer,
-        )
-        conversation.save(update_fields=('title', 'updated_at'))
+            ChatMessage.objects.create(
+                conversation=conversation,
+                role=ChatMessage.Role.USER,
+                content=result.question,
+            )
+
+            ChatMessage.objects.create(
+                conversation=conversation,
+                role=ChatMessage.Role.ASSISTANT,
+                content=result.answer,
+            )
+
+            conversation.save(update_fields=('updated_at',))
 
         return Response({
             'conversation_id': conversation.id,
@@ -191,3 +199,6 @@ class QuestionAnswerView(APIView):
             ],
             'has_context': result.has_context,
         })
+    
+
+
