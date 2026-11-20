@@ -840,7 +840,24 @@ class ClassifierLoadingTests(APITestCase):
                 ):
                     load_classifier()
 
-            load_classifier.cache_clear()        
+            load_classifier.cache_clear()
+    def test_corrupted_model_artifact_raises_error(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from ai_engine.services import load_classifier
+
+        with TemporaryDirectory() as temp_dir:
+            corrupted_model = Path(temp_dir) / 'corrupted.joblib'
+            corrupted_model.write_text('invalid model data')
+
+            load_classifier.cache_clear()
+
+            with patch('ai_engine.services.MODEL_PATH', corrupted_model):
+                with self.assertRaises(Exception):
+                    load_classifier()
+
+            load_classifier.cache_clear()                
 class ClassifierCacheTests(APITestCase):
     def test_load_classifier_returns_cached_instance(self):
         from unittest.mock import patch
