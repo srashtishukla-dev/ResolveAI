@@ -947,3 +947,24 @@ class ClassifierTrainingTests(APITestCase):
             self.assertEqual(result, output_path)
             self.assertTrue(output_path.parent.exists())
             mock_dump.assert_called_once() 
+    def test_training_creates_missing_nested_directories(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+        from ai_engine.services import train_classifier
+
+        with TemporaryDirectory() as temp_dir:
+            output_path = (
+                Path(temp_dir) / 'models' / 'production' / 'classifier.joblib'
+            )
+
+            with patch(
+                'ai_engine.services.build_training_pipeline',
+                return_value=object(),
+            ), patch('ai_engine.services.joblib.dump'), patch(
+                'ai_engine.services.load_classifier.cache_clear'
+            ):
+                result = train_classifier(output_path)
+
+            self.assertEqual(result, output_path)
+            self.assertTrue(output_path.parent.is_dir())        
