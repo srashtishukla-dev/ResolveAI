@@ -240,6 +240,45 @@ class ConversationSecurityTests(APITestCase):
             Conversation.objects.filter(pk=self.other_conversation.pk).exists()
         )
 
+
+    def test_staff_can_rename_own_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': 'Updated support chat'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Updated support chat')
+
+    def test_staff_cannot_rename_conversation_with_blank_title(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': '   '},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_cannot_rename_conversation_with_title_over_150_characters(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': 'A' * 151},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_cannot_rename_another_staff_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.other_conversation.id}),
+            {'title': 'Unauthorized rename'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class QuestionAnswerSerializerTests(APITestCase):
     def test_valid_question_is_accepted(self):
         serializer = QuestionAnswerSerializer(data={
