@@ -373,3 +373,9 @@ export function askAssistant(question: string, conversationId?: number) {
   })
   
 }
+export function renameConversation(conversationId: number, title: string) {
+  return request<Conversation>(`/api/ai/conversations/${conversationId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  })
+}
