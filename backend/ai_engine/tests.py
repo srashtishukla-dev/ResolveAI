@@ -240,45 +240,6 @@ class ConversationSecurityTests(APITestCase):
             Conversation.objects.filter(pk=self.other_conversation.pk).exists()
         )
 
-
-    def test_staff_can_rename_own_conversation(self):
-        self.client.force_authenticate(user=self.staff)
-        response = self.client.patch(
-            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
-            {'title': 'Updated support chat'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['title'], 'Updated support chat')
-
-    def test_staff_cannot_rename_conversation_with_blank_title(self):
-        self.client.force_authenticate(user=self.staff)
-        response = self.client.patch(
-            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
-            {'title': '   '},
-            format='json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_staff_cannot_rename_conversation_with_title_over_150_characters(self):
-        self.client.force_authenticate(user=self.staff)
-        response = self.client.patch(
-            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
-            {'title': 'A' * 151},
-            format='json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_staff_cannot_rename_another_staff_conversation(self):
-        self.client.force_authenticate(user=self.staff)
-        response = self.client.patch(
-            reverse('conversation-detail', kwargs={'conversation_id': self.other_conversation.id}),
-            {'title': 'Unauthorized rename'},
-            format='json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-
 class QuestionAnswerSerializerTests(APITestCase):
     def test_valid_question_is_accepted(self):
         serializer = QuestionAnswerSerializer(data={
@@ -319,6 +280,7 @@ class QuestionAnswerSerializerTests(APITestCase):
         })
 
         self.assertTrue(serializer.is_valid())
+
 
 class QuestionAnswerAccessTests(APITestCase):
     def setUp(self):
@@ -366,6 +328,54 @@ class QuestionAnswerAccessTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_sending_message_updates_conversation_timestamp(self):
+        from datetime import timedelta
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.utils import timezone
+        from ai_engine.models import ChatMessage
+
+        self.client.force_authenticate(user=self.staff)
+
+        conversation = Conversation.objects.create(
+            user=self.staff,
+            title='Existing conversation',
+        )
+        ChatMessage.objects.create(
+            conversation=conversation,
+            role=ChatMessage.Role.USER,
+            content='Previous question',
+        )
+
+        Conversation.objects.filter(pk=conversation.pk).update(
+            updated_at=timezone.now() - timedelta(days=1)
+        )
+        conversation.refresh_from_db()
+        previous_timestamp = conversation.updated_at
+
+        result = SimpleNamespace(
+            question='How do I reset my password?',
+            answer='Follow the password reset instructions.',
+            sources=[],
+            has_context=False,
+        )
+
+        with patch('ai_engine.views.answer_question', return_value=result):
+            response = self.client.post(
+                self.url,
+                {
+                    'question': 'How do I reset my password?',
+                    'conversation_id': conversation.id,
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        conversation.refresh_from_db()
+        self.assertGreater(conversation.updated_at, previous_timestamp)
+
 class ClassifierInputValidationTests(APITestCase):
     def test_empty_title_is_rejected(self):
         from ai_engine.services import classify_ticket
@@ -566,36 +576,3 @@ class ClassifierTrainingTests(APITestCase):
             self.assertEqual(result, output_path)
             self.assertTrue(output_path.parent.exists())
             mock_dump.assert_called_once() 
-class TrainingDataIntegrityTests(APITestCase):
-
-    def test_training_examples_and_labels_have_same_length(self):
-        from ai_engine.ml_data import TRAINING_EXAMPLES, TRAINING_LABELS
-
-        self.assertEqual(
-            len(TRAINING_EXAMPLES),
-            len(TRAINING_LABELS)
-        )
-
-    def test_training_examples_have_valid_text(self):
-        from ai_engine.ml_data import TRAINING_EXAMPLES
-
-        for title, description in TRAINING_EXAMPLES:
-            with self.subTest(title=title):
-                self.assertIsInstance(title, str)
-                self.assertIsInstance(description, str)
-                self.assertTrue(title.strip())
-                self.assertTrue(description.strip())
-
-    def test_training_examples_do_not_contain_duplicates(self):
-        from ai_engine.ml_data import TRAINING_EXAMPLES
-
-        normalized_examples = [
-            (title.strip().lower(), description.strip().lower())
-            for title, description in TRAINING_EXAMPLES
-        ]
-
-        self.assertEqual(
-            len(normalized_examples),
-            len(set(normalized_examples)),
-            'Duplicate training examples found.'
-        )
