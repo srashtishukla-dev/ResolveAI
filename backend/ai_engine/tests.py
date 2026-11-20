@@ -526,5 +526,22 @@ class ClassifierTrainingTests(APITestCase):
 
             self.assertEqual(result, output_path)
             self.assertTrue(output_path.parent.exists())
-            mock_dump.assert_called_once()        
+            mock_dump.assert_called_once() 
+class TrainingDataIntegrityTests(APITestCase):
+    def test_training_examples_and_labels_have_same_length(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES, TRAINING_LABELS
+
+        self.assertEqual(
+            len(TRAINING_EXAMPLES),
+            len(TRAINING_LABELS)
+        )
+
+    def test_training_examples_have_valid_text(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES
+
+        for title, description in TRAINING_EXAMPLES:
+            self.assertIsInstance(title, str)
+            self.assertIsInstance(description, str)
+            self.assertTrue(title.strip())
+            self.assertTrue(description.strip())       
                    
