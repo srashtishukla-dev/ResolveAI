@@ -392,7 +392,23 @@ class ClassifierPredictionTests(APITestCase):
         ):
             result = classify_ticket('Payment issue', 'Payment failed')
 
-        self.assertEqual(result, ('BILLING', 0.5))      
+        self.assertEqual(result, ('BILLING', 0.5))
+    def test_confidence_is_capped_at_one(self):
+        from unittest.mock import Mock, patch
+        import numpy as np
+        from ai_engine.services import classify_ticket
+
+        classifier = Mock()
+        classifier.classes_ = ['TECHNICAL']
+        classifier.predict_proba.return_value = np.array([[1.5]])
+
+        with patch(
+            'ai_engine.services.load_classifier',
+            return_value=classifier
+        ):
+            result = classify_ticket('Login issue', 'Unable to log in')
+
+        self.assertEqual(result, ('TECHNICAL', 1.0))     
 class ClassifierLoadingTests(APITestCase):
     def test_missing_model_raises_clear_error(self):
         from pathlib import Path
