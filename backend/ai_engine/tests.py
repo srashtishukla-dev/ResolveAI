@@ -446,6 +446,111 @@ class QuestionAnswerAccessTests(APITestCase):
 
         conversation.refresh_from_db()
         self.assertGreater(conversation.updated_at, previous_timestamp)
+    def test_conversation_history_is_passed_in_chronological_order(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from ai_engine.models import ChatMessage
+
+        self.client.force_authenticate(user=self.staff)
+
+        conversation = Conversation.objects.create(
+            user=self.staff,
+            title='Conversation history test',
+        )
+
+        ChatMessage.objects.create(
+            conversation=conversation,
+            role=ChatMessage.Role.USER,
+            content='First question',
+        )
+        ChatMessage.objects.create(
+            conversation=conversation,
+            role=ChatMessage.Role.ASSISTANT,
+            content='First answer',
+        )
+        ChatMessage.objects.create(
+            conversation=conversation,
+            role=ChatMessage.Role.USER,
+            content='Second question',
+        )
+
+        result = SimpleNamespace(
+            question='Next question',
+            answer='Next answer',
+            sources=[],
+            has_context=False,
+        )
+
+        with patch(
+            'ai_engine.views.answer_question',
+            return_value=result,
+        ) as mocked_answer:
+            response = self.client.post(
+                self.url,
+                {
+                    'question': 'Next question',
+                    'conversation_id': conversation.id,
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            mocked_answer.call_args.kwargs['conversation_history'],
+            (
+                ('user', 'First question'),
+                ('assistant', 'First answer'),
+                ('user', 'Second question'),
+            ),
+        )
+
+    def test_conversation_history_is_limited_to_latest_ten_messages(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from ai_engine.models import ChatMessage
+
+        self.client.force_authenticate(user=self.staff)
+
+        conversation = Conversation.objects.create(
+            user=self.staff,
+            title='Conversation history limit test',
+        )
+
+        for number in range(12):
+            ChatMessage.objects.create(
+                conversation=conversation,
+                role=ChatMessage.Role.USER,
+                content=f'Message {number}',
+            )
+
+        result = SimpleNamespace(
+            question='Final question',
+            answer='Final answer',
+            sources=[],
+            has_context=False,
+        )
+
+        with patch(
+            'ai_engine.views.answer_question',
+            return_value=result,
+        ) as mocked_answer:
+            response = self.client.post(
+                self.url,
+                {
+                    'question': 'Final question',
+                    'conversation_id': conversation.id,
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            mocked_answer.call_args.kwargs['conversation_history'],
+            tuple(
+                ('user', f'Message {number}')
+                for number in range(2, 12)
+            ),
+        )        
 
 class ClassifierInputValidationTests(APITestCase):
     def test_empty_title_is_rejected(self):
