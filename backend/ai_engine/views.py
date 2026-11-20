@@ -95,6 +95,23 @@ class ConversationDetailView(APIView):
             )
         conversation = self._get_conversation(request, conversation_id)
         return Response(ConversationSerializer(conversation).data)
+    def patch(self, request, conversation_id):
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Only staff users can access conversations.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        conversation = self._get_conversation(request, conversation_id)
+        serializer = ConversationSerializer(
+            conversation,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request, conversation_id):
         if not request.user.is_staff:
