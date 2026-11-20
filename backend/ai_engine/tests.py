@@ -778,7 +778,31 @@ class ClassifierPredictionTests(APITestCase):
         ):
             classify_ticket('Login issue', 'Unable to log in')
 
-        classifier.predict_proba.assert_called_once()   
+        classifier.predict_proba.assert_called_once() 
+    def test_non_string_inputs_are_rejected_before_model_loading(self):
+        from unittest.mock import patch
+        from ai_engine.services import classify_ticket
+
+        invalid_inputs = [
+            (None, 'Unable to log in'),
+            ('Login issue', 123),
+            ([], 'Unable to log in'),
+            ('Login issue', None),
+        ]
+
+        with patch('ai_engine.services.load_classifier') as mocked_loader:
+            for title, description in invalid_inputs:
+                with self.subTest(
+                    title=title,
+                    description=description,
+                ):
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        'must be strings',
+                    ):
+                        classify_ticket(title, description)
+
+            mocked_loader.assert_not_called()      
 class ClassifierLoadingTests(APITestCase):
     def test_missing_model_raises_clear_error(self):
         from pathlib import Path
