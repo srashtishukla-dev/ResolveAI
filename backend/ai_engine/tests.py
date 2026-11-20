@@ -212,6 +212,39 @@ class ConversationSecurityTests(APITestCase):
         returned_ids = [item['id'] for item in response.data]
         self.assertIn(self.conversation.id, returned_ids)
         self.assertNotIn(self.other_conversation.id, returned_ids)
+    def test_conversation_messages_are_returned_in_chronological_order(self):
+        from ai_engine.models import ChatMessage
+
+        ChatMessage.objects.create(
+            conversation=self.conversation,
+            role=ChatMessage.Role.USER,
+            content='First question',
+        )
+        ChatMessage.objects.create(
+            conversation=self.conversation,
+            role=ChatMessage.Role.ASSISTANT,
+            content='First answer',
+        )
+        ChatMessage.objects.create(
+            conversation=self.conversation,
+            role=ChatMessage.Role.USER,
+            content='Second question',
+        )
+
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.get(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [message['content'] for message in response.data['messages']],
+            ['First question', 'First answer', 'Second question'],
+        )
 
     def test_staff_cannot_view_another_staff_conversation(self):
         self.client.force_authenticate(user=self.staff)
