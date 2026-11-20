@@ -58,6 +58,9 @@ def load_classifier():
 
 
 def classify_ticket(title, description):
+    if not isinstance(title, str) or not isinstance(description, str):
+        raise ValueError('Title and description must be strings.')
+
     title = title.strip()
     description = description.strip()
 

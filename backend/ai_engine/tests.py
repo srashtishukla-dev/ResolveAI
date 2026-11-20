@@ -338,7 +338,18 @@ class ClassifierInputValidationTests(APITestCase):
         from ai_engine.services import classify_ticket
 
         with self.assertRaises(ValueError):
-            classify_ticket('Login issue', '   ')        
+            classify_ticket('Login issue', '   ') 
+    def test_none_title_is_rejected(self):
+        from ai_engine.services import classify_ticket
+
+        with self.assertRaisesRegex(ValueError, 'must be strings'):
+            classify_ticket(None, 'Cannot log in')
+
+    def test_numeric_description_is_rejected(self):
+        from ai_engine.services import classify_ticket
+
+        with self.assertRaisesRegex(ValueError, 'must be strings'):
+            classify_ticket('Login issue', 123)       
 class ClassifierPredictionTests(APITestCase):
     def test_returns_category_with_highest_confidence(self):
         from unittest.mock import Mock, patch
