@@ -627,7 +627,56 @@ class ClassifierInputValidationTests(APITestCase):
         from ai_engine.services import classify_ticket
 
         with self.assertRaisesRegex(ValueError, 'must be strings'):
-            classify_ticket('Login issue', 123)       
+            classify_ticket('Login issue', 123) 
+    def test_ai_receives_only_current_conversation_history(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from ai_engine.models import ChatMessage
+
+        self.client.force_authenticate(user=self.staff)
+
+        conversation = Conversation.objects.create(
+            user=self.staff,
+            title='My conversation',
+        )
+
+        ChatMessage.objects.create(
+            conversation=conversation,
+            role=ChatMessage.Role.USER,
+            content='My private question',
+        )
+
+        ChatMessage.objects.create(
+            conversation=self.other_conversation,
+            role=ChatMessage.Role.USER,
+            content='Another staff private question',
+        )
+
+        result = SimpleNamespace(
+            question='Next question',
+            answer='Answer',
+            sources=[],
+            has_context=False,
+        )
+
+        with patch(
+            'ai_engine.views.answer_question',
+            return_value=result,
+        ) as mocked_answer:
+            response = self.client.post(
+                self.url,
+                {
+                    'question': 'Next question',
+                    'conversation_id': conversation.id,
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            mocked_answer.call_args.kwargs['conversation_history'],
+            (('user', 'My private question'),),
+        )              
 class ClassifierPredictionTests(APITestCase):
     def test_returns_category_with_highest_confidence(self):
         from unittest.mock import Mock, patch
