@@ -528,6 +528,7 @@ class ClassifierTrainingTests(APITestCase):
             self.assertTrue(output_path.parent.exists())
             mock_dump.assert_called_once() 
 class TrainingDataIntegrityTests(APITestCase):
+
     def test_training_examples_and_labels_have_same_length(self):
         from ai_engine.ml_data import TRAINING_EXAMPLES, TRAINING_LABELS
 
@@ -540,8 +541,22 @@ class TrainingDataIntegrityTests(APITestCase):
         from ai_engine.ml_data import TRAINING_EXAMPLES
 
         for title, description in TRAINING_EXAMPLES:
-            self.assertIsInstance(title, str)
-            self.assertIsInstance(description, str)
-            self.assertTrue(title.strip())
-            self.assertTrue(description.strip())       
-                   
+            with self.subTest(title=title):
+                self.assertIsInstance(title, str)
+                self.assertIsInstance(description, str)
+                self.assertTrue(title.strip())
+                self.assertTrue(description.strip())
+
+    def test_training_examples_do_not_contain_duplicates(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES
+
+        normalized_examples = [
+            (title.strip().lower(), description.strip().lower())
+            for title, description in TRAINING_EXAMPLES
+        ]
+
+        self.assertEqual(
+            len(normalized_examples),
+            len(set(normalized_examples)),
+            'Duplicate training examples found.'
+        )
