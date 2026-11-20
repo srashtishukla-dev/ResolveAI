@@ -408,7 +408,23 @@ class ClassifierPredictionTests(APITestCase):
         ):
             result = classify_ticket('Login issue', 'Unable to log in')
 
-        self.assertEqual(result, ('TECHNICAL', 1.0))     
+        self.assertEqual(result, ('TECHNICAL', 1.0))
+    def test_confidence_is_floored_at_zero(self):
+        from unittest.mock import Mock, patch
+        import numpy as np
+        from ai_engine.services import classify_ticket
+
+        classifier = Mock()
+        classifier.classes_ = ['GENERAL']
+        classifier.predict_proba.return_value = np.array([[-0.5]])
+
+        with patch(
+            'ai_engine.services.load_classifier',
+            return_value=classifier
+        ):
+            result = classify_ticket('General issue', 'Need help')
+
+        self.assertEqual(result, ('GENERAL', 0.0))     
 class ClassifierLoadingTests(APITestCase):
     def test_missing_model_raises_clear_error(self):
         from pathlib import Path
