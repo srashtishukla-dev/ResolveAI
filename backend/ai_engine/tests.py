@@ -300,6 +300,31 @@ class ConversationSecurityTests(APITestCase):
             format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_staff_can_delete_own_conversation_and_messages(self):
+        from ai_engine.models import ChatMessage
+
+        message = ChatMessage.objects.create(
+            conversation=self.conversation,
+            role=ChatMessage.Role.USER,
+            content='Question to be deleted',
+        )
+
+        self.client.force_authenticate(user=self.staff)
+
+        response = self.client.delete(
+            reverse(
+                'conversation-detail',
+                kwargs={'conversation_id': self.conversation.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(
+            Conversation.objects.filter(pk=self.conversation.pk).exists()
+        )
+        self.assertFalse(
+            ChatMessage.objects.filter(pk=message.pk).exists()
+        )    
 
     def test_staff_cannot_rename_another_staff_conversation(self):
         self.client.force_authenticate(user=self.staff)
