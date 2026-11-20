@@ -6,6 +6,7 @@ import {
   clearStoredTokens,
   createTicket,
   deleteConversation as deleteConversationRequest,
+  renameConversation,
   deleteTicket,
   getConversation,
   getCurrentUser,
@@ -927,6 +928,7 @@ function Sidebar({
   isLoadingConversations,
   isDeletingConversationId,
   onDeleteConversation,
+  onRenameConversation,
   onNewChat,
   onSelectConversation,
   onNavigate,
@@ -938,6 +940,7 @@ function Sidebar({
   isLoadingConversations: boolean
   isDeletingConversationId: number | null
   onDeleteConversation: (conversationId: number) => void
+  onRenameConversation: (conversationId: number) => void
   onNewChat: () => void
   onSelectConversation: (conversationId: number) => void
   onNavigate: (page: StaffPage) => void
@@ -1010,6 +1013,14 @@ function Sidebar({
                 type="button"
               >
                 {conversation.title}
+              </button>
+              <button
+                aria-label={`Rename ${conversation.title}`}
+                className="rounded-lg px-2 py-1 text-slate-400 opacity-0 transition hover:bg-indigo-50 hover:text-indigo-600 group-hover:opacity-100 focus:opacity-100"
+                onClick={() => onRenameConversation(conversation.id)}
+                type="button"
+              >
+                ?
               </button>
               <button
                 aria-label={`Delete ${conversation.title}`}
@@ -1194,6 +1205,36 @@ function AssistantPage({
     }
   }
 
+  async function renameSavedConversation(conversationId: number) {
+    const conversation = conversations.find((item) => item.id === conversationId)
+    if (!conversation) return
+
+    const title = window.prompt('Enter a new conversation title:', conversation.title)
+    if (title === null) return
+
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      setConversationError('Conversation title cannot be empty.')
+      return
+    }
+
+    try {
+      const updated = await renameConversation(conversationId, trimmedTitle)
+      setConversations((current) =>
+        current.map((item) =>
+          item.id === conversationId ? { ...item, title: updated.title } : item
+        )
+      )
+      setConversationError('')
+    } catch (caughtError) {
+      setConversationError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : 'Unable to rename this conversation.'
+      )
+    }
+  }
+
   async function removeConversation(conversationId: number) {
     const conversation = conversations.find((item) => item.id === conversationId)
     if (!conversation || !window.confirm(`Delete "${conversation.title}"?`)) {
@@ -1295,6 +1336,7 @@ function AssistantPage({
         isDeletingConversationId={isDeletingConversationId}
         isLoadingConversations={isLoadingConversations}
         onDeleteConversation={(conversationId) => void removeConversation(conversationId)}
+        onRenameConversation={(conversationId) => void renameSavedConversation(conversationId)}
         onLogout={onLogout}
         onNavigate={onNavigate}
         onNewChat={startNewChat}
