@@ -273,6 +273,44 @@ class ConversationSecurityTests(APITestCase):
             Conversation.objects.filter(pk=self.other_conversation.pk).exists()
         )
 
+    def test_staff_can_rename_own_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': 'Updated support chat'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Updated support chat')
+
+    def test_staff_cannot_rename_conversation_with_blank_title(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': '   '},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_cannot_rename_conversation_with_title_over_150_characters(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.conversation.id}),
+            {'title': 'A' * 151},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_staff_cannot_rename_another_staff_conversation(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.patch(
+            reverse('conversation-detail', kwargs={'conversation_id': self.other_conversation.id}),
+            {'title': 'Unauthorized rename'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+
 class QuestionAnswerSerializerTests(APITestCase):
     def test_valid_question_is_accepted(self):
         serializer = QuestionAnswerSerializer(data={
@@ -586,7 +624,41 @@ class ClassifierTrainingCacheTests(APITestCase):
             train_classifier('temporary_classifier.joblib')
 
         mock_dump.assert_called_once()
-        mock_clear.assert_called_once() 
+        mock_clear.assert_called_once()
+
+class TrainingDataIntegrityTests(APITestCase):
+    def test_training_examples_and_labels_have_same_length(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES, TRAINING_LABELS
+
+        self.assertEqual(
+            len(TRAINING_EXAMPLES),
+            len(TRAINING_LABELS)
+        )
+
+    def test_training_examples_have_valid_text(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES
+
+        for title, description in TRAINING_EXAMPLES:
+            with self.subTest(title=title):
+                self.assertIsInstance(title, str)
+                self.assertIsInstance(description, str)
+                self.assertTrue(title.strip())
+                self.assertTrue(description.strip())
+
+    def test_training_examples_do_not_contain_duplicates(self):
+        from ai_engine.ml_data import TRAINING_EXAMPLES
+
+        normalized_examples = [
+            (title.strip().lower(), description.strip().lower())
+            for title, description in TRAINING_EXAMPLES
+        ]
+
+        self.assertEqual(
+            len(normalized_examples),
+            len(set(normalized_examples)),
+            'Duplicate training examples found.'
+        )
+         
 class ClassifierTrainingTests(APITestCase):
     def test_training_creates_model_file(self):
         from pathlib import Path
