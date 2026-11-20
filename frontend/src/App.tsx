@@ -1218,6 +1218,11 @@ function AssistantPage({
       return
     }
 
+    if (trimmedTitle.length > 150) {
+      setConversationError('Conversation title cannot exceed 150 characters.')
+      return
+    }
+
     try {
       const updated = await renameConversation(conversationId, trimmedTitle)
       setConversations((current) =>
